@@ -70,8 +70,10 @@ func (b *Builder) Add(data ...any) *Builder {
 	return b
 }
 
-func (b *Builder) Reset() {
+// Reset the builder.
+func (b *Builder) Reset(data ...any) *Builder {
 	b.sql.Reset()
 	b.params = nil
 	b.paramsIndex = nil
+	return b.Add(data...)
 }
