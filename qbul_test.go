@@ -10,8 +10,8 @@ import (
 
 func TestNormalUsage(t *testing.T) {
 	t.Parallel()
-
-	q := qbul.New(
+	var q qbul.Builder
+	q.Add(
 		`select * from people`,
 		`where id =`, qbul.P(10),
 		`and name like`, qbul.P("Bob%"),
@@ -30,13 +30,19 @@ func TestNormalUsage(t *testing.T) {
 	if p[0] != 10 || p[1] != "Bob%" {
 		t.Fatalf("invalid params")
 	}
+
+	q.Reset()
+	if q.SQL() != "" || len(q.Params()) != 0 {
+		t.Fatalf("invalid Reset")
+	}
 }
 
 func TestReuseParam(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now()
-	q := qbul.New(
+	var q qbul.Builder
+	q.Add(
 		`select * from people`,
 		`where birth_time <=`, qbul.P(now), `and`, qbul.P(now), `<= death_time`,
 		`and name like`, qbul.P("Bob%"),
@@ -59,7 +65,8 @@ func TestReuseParam(t *testing.T) {
 func TestNonComparableParam(t *testing.T) {
 	t.Parallel()
 
-	q := qbul.New(
+	var q qbul.Builder
+	q.Add(
 		`select * from people`,
 		`where id in (select * from unnest(`, qbul.P([]int{1, 2, 3}), `::int4[]))`,
 	)
@@ -87,7 +94,8 @@ func TestInvalidParam(t *testing.T) {
 		}
 	}()
 
-	qbul.New(
+	var q qbul.Builder
+	q.Add(
 		`select * from people`,
 		`where id =`, 10,
 		`and name like`, "Bob%",

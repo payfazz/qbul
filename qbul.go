@@ -15,13 +15,6 @@ type Builder struct {
 	paramsIndex map[any]int
 }
 
-// New will create new Builder and passing the data to its Add method.
-func New(data ...any) *Builder {
-	var b Builder
-	b.Add(data...)
-	return &b
-}
-
 type param struct{ data any }
 
 // P is used to indicate sql parameter.
@@ -75,4 +68,10 @@ func (b *Builder) Add(data ...any) *Builder {
 		}
 	}
 	return b
+}
+
+func (b *Builder) Reset() {
+	b.sql.Reset()
+	b.params = nil
+	b.paramsIndex = nil
 }
