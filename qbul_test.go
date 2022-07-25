@@ -1,18 +1,20 @@
-package qbul
+package qbul_test
 
 import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/payfazz/qbul"
 )
 
 func TestNormalUsage(t *testing.T) {
 	t.Parallel()
 
-	q := Build(
+	q := qbul.New(
 		`select * from people`,
-		`where id =`, Param(10),
-		`and name like`, Param("Bob%"),
+		`where id =`, qbul.P(10),
+		`and name like`, qbul.P("Bob%"),
 		`order by id asc`,
 	)
 
@@ -34,10 +36,10 @@ func TestReuseParam(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now()
-	q := Build(
+	q := qbul.New(
 		`select * from people`,
-		`where birth_time <=`, Param(now), `and`, Param(now), `<= death_time`,
-		`and name like`, Param("Bob%"),
+		`where birth_time <=`, qbul.P(now), `and`, qbul.P(now), `<= death_time`,
+		`and name like`, qbul.P("Bob%"),
 	)
 
 	if q.SQL() != `select * from people where birth_time <= $1 and $1 <= death_time and name like $2` {
@@ -57,9 +59,9 @@ func TestReuseParam(t *testing.T) {
 func TestNonComparableParam(t *testing.T) {
 	t.Parallel()
 
-	q := Build(
+	q := qbul.New(
 		`select * from people`,
-		`where id in (select * from unnest(`, Param([]int{1, 2, 3}), `::int4[]))`,
+		`where id in (select * from unnest(`, qbul.P([]int{1, 2, 3}), `::int4[]))`,
 	)
 
 	if q.SQL() != `select * from people where id in (select * from unnest( $1 ::int4[]))` {
@@ -85,7 +87,7 @@ func TestInvalidParam(t *testing.T) {
 		}
 	}()
 
-	Build(
+	qbul.New(
 		`select * from people`,
 		`where id =`, 10,
 		`and name like`, "Bob%",

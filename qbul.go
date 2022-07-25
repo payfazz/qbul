@@ -11,34 +11,34 @@ import (
 // The zero value is ready to use.
 type Builder struct {
 	sql         strings.Builder
-	params      []interface{}
-	paramsIndex map[interface{}]int
+	params      []any
+	paramsIndex map[any]int
 }
 
-// Build will create new Builder and passing the data to its Append method.
-func Build(data ...interface{}) *Builder {
+// New will create new Builder and passing the data to its Add method.
+func New(data ...any) *Builder {
 	var b Builder
-	b.Append(data...)
+	b.Add(data...)
 	return &b
 }
 
-type param struct{ data interface{} }
+type param struct{ data any }
 
-// Param is used to indicate sql parameter.
-func Param(data interface{}) interface{} { return param{data} }
+// P is used to indicate sql parameter.
+func P(data any) any { return param{data} }
 
 // SQL return the complete sql statement.
 func (b *Builder) SQL() string { return b.sql.String() }
 
 // Params return positional parameters that coresponding with string returned by SQL method.
-func (b *Builder) Params() []interface{} { return b.params }
+func (b *Builder) Params() []any { return b.params }
 
-// Append data into builder.
-// data must be string or interface{} returned by Param function.
+// Add data into builder.
+// data must be string or any returned by P function.
 //
-// NOTE: you must use Param function to pass string parameter, without it, the string is appended
+// NOTE: you must use P function to pass string parameter, without it, the string is appended
 // to query directly, if you do that, you are vulnerable to sql injection.
-func (b *Builder) Append(data ...interface{}) *Builder {
+func (b *Builder) Add(data ...any) *Builder {
 	for _, item := range data {
 		switch x := item.(type) {
 		case string:
@@ -52,13 +52,12 @@ func (b *Builder) Append(data ...interface{}) *Builder {
 			pos := len(b.params) + 1
 
 			if reflect.TypeOf(p).Comparable() {
-				if b.paramsIndex == nil {
-					b.paramsIndex = make(map[interface{}]int)
-				}
-
 				if cachedPos, ok := b.paramsIndex[p]; ok {
 					pos = cachedPos
 				} else {
+					if b.paramsIndex == nil {
+						b.paramsIndex = make(map[any]int)
+					}
 					b.paramsIndex[p] = pos
 					b.params = append(b.params, p)
 				}
