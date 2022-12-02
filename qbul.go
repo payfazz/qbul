@@ -15,10 +15,11 @@ type Builder struct {
 	paramsIndex map[any]int
 }
 
-type param struct{ data any }
+// Param is the type returned by P function
+type Param struct{ data any }
 
 // P is used to indicate sql parameter.
-func P(data any) any { return param{data} }
+func P(data any) Param { return Param{data} }
 
 // SQL return the complete sql statement.
 func (b *Builder) SQL() string { return b.sql.String() }
@@ -27,7 +28,7 @@ func (b *Builder) SQL() string { return b.sql.String() }
 func (b *Builder) Params() []any { return b.params }
 
 // Add data into builder.
-// data must be string or any returned by P function.
+// data must be string or Param returned by P function.
 //
 // NOTE: you must use P function to pass string parameter, without it, the string is appended
 // to query directly, if you do that, you are vulnerable to sql injection.
@@ -40,7 +41,7 @@ func (b *Builder) Add(data ...any) *Builder {
 			}
 			b.sql.WriteString(x)
 
-		case param:
+		case Param:
 			p := x.data
 			pos := len(b.params) + 1
 
@@ -64,13 +65,15 @@ func (b *Builder) Add(data ...any) *Builder {
 			b.sql.WriteByte('$')
 			b.sql.WriteString(strconv.Itoa(pos))
 		default:
-			panic("invalid argument: can't process value with type: " + reflect.TypeOf(item).String())
+			panic(`invalid argument: must be a value with type "string" or "Param"`)
 		}
 	}
 	return b
 }
 
 // Reset the builder.
+//
+// will pass the arguments to Add method.
 func (b *Builder) Reset(data ...any) *Builder {
 	b.sql.Reset()
 	b.params = nil
