@@ -11,12 +11,11 @@ import (
 func TestNormalUsage(t *testing.T) {
 	t.Parallel()
 	var q qbul.Builder
-	q.Add(
-		`select * from people`,
-		`where id =`, qbul.P(10),
-		`and name like`, qbul.P("Bob%"),
-		`order by id asc`,
-	)
+	q.
+		Raw(`select * from people`).
+		Raw(`where id =`).P(10).
+		Raw(`and name like`).P("Bob%").
+		Raw(`order by id asc`)
 
 	if q.SQL() != `select * from people where id = $1 and name like $2 order by id asc` {
 		t.Fatalf("invalid sql")
@@ -42,11 +41,10 @@ func TestReuseParam(t *testing.T) {
 
 	now := time.Now()
 	var q qbul.Builder
-	q.Add(
-		`select * from people`,
-		`where birth_time <=`, qbul.P(now), `and`, qbul.P(now), `<= death_time`,
-		`and name like`, qbul.P("Bob%"),
-	)
+	q.
+		Raw(`select * from people`).
+		Raw(`where birth_time <=`).P(now).Raw(`and`).P(now).Raw(`<= death_time`).
+		Raw(`and name like`).P("Bob%")
 
 	if q.SQL() != `select * from people where birth_time <= $1 and $1 <= death_time and name like $2` {
 		t.Fatalf("invalid sql")
@@ -66,39 +64,23 @@ func TestNonComparableParam(t *testing.T) {
 	t.Parallel()
 
 	var q qbul.Builder
-	q.Add(
-		`select * from people`,
-		`where id in (select * from unnest(`, qbul.P([]int{1, 2, 3}), `::int4[]))`,
-	)
+	q.
+		Raw(`select * from people`).
+		Raw(`where id = any(`).P([]int{1, 2, 3}).Raw(`::int4[]) and id = any(`).P([]int{1, 2, 3}).Raw(`::int4[])`)
 
-	if q.SQL() != `select * from people where id in (select * from unnest( $1 ::int4[]))` {
+	if q.SQL() != `select * from people where id = any( $1 ::int4[]) and id = any( $2 ::int4[])` {
 		t.Fatalf("invalid sql")
 	}
 
 	p := q.Params()
-	if len(p) != 1 {
+	if len(p) != 2 {
 		t.Fatalf("invalid params length")
 	}
 
 	if !reflect.DeepEqual(p[0], []int{1, 2, 3}) {
 		t.Fatalf("invalid params")
 	}
-}
-
-func TestInvalidParam(t *testing.T) {
-	t.Parallel()
-
-	defer func() {
-		if recover() == nil {
-			t.Fatalf("should panic")
-		}
-	}()
-
-	var q qbul.Builder
-	q.Add(
-		`select * from people`,
-		`where id =`, 10,
-		`and name like`, "Bob%",
-		`order by id asc`,
-	)
+	if !reflect.DeepEqual(p[1], []int{1, 2, 3}) {
+		t.Fatalf("invalid params")
+	}
 }

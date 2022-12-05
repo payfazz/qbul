@@ -14,15 +14,15 @@ func Example() {
 	var id int        // = ...
 
 	var query qbul.Builder
-	query.Add(
-		`select * from people`,
-		`where id =`, qbul.P(id),
-		`order by id`,
-	)
+	query.Reset().
+		Raw(`select * from people`).
+		Raw(`where id =`).P(id).
+		Raw(`order by id`)
+
 	if ascOrder {
-		query.Add(`asc`)
+		query.Raw(`asc`)
 	} else {
-		query.Add(`desc`)
+		query.Raw(`desc`)
 	}
 
 	// do the query
