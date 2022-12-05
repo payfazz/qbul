@@ -1,4 +1,7 @@
 // Package qbul provide utility to compose sql string for postgres.
+//
+// it also can be used for other db software other than postgres, as long it
+// also uses $1, $2, $3, ... for their argument placeholder
 package qbul
 
 import (
@@ -30,38 +33,36 @@ func (b *Builder) Params() []any { return b.params }
 // Add data into builder.
 // data must be string or Param returned by P function.
 //
-// NOTE: you must use P function to pass string parameter, without it, the string is appended
+// CAUTION: you must use P function to pass string parameter, without it, the string is appended
 // to query directly, if you do that, you are vulnerable to sql injection.
 func (b *Builder) Add(data ...any) *Builder {
 	for _, item := range data {
-		switch x := item.(type) {
+		if b.sql.Len() != 0 {
+			b.sql.WriteByte(' ')
+		}
+
+		switch item := item.(type) {
 		case string:
-			if b.sql.Len() != 0 {
-				b.sql.WriteByte(' ')
-			}
-			b.sql.WriteString(x)
+			b.sql.WriteString(item)
 
 		case Param:
-			p := x.data
+			data := item.data
 			pos := len(b.params) + 1
 
-			if reflect.TypeOf(p).Comparable() {
-				if cachedPos, ok := b.paramsIndex[p]; ok {
+			if reflect.TypeOf(data).Comparable() {
+				if cachedPos, ok := b.paramsIndex[data]; ok {
 					pos = cachedPos
 				} else {
 					if b.paramsIndex == nil {
 						b.paramsIndex = make(map[any]int)
 					}
-					b.paramsIndex[p] = pos
-					b.params = append(b.params, p)
+					b.paramsIndex[data] = pos
+					b.params = append(b.params, data)
 				}
 			} else {
-				b.params = append(b.params, p)
+				b.params = append(b.params, data)
 			}
 
-			if b.sql.Len() != 0 {
-				b.sql.WriteByte(' ')
-			}
 			b.sql.WriteByte('$')
 			b.sql.WriteString(strconv.Itoa(pos))
 		default:
