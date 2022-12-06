@@ -7,21 +7,19 @@ package qbul
 import (
 	"reflect"
 	"strconv"
-	"strings"
 )
 
 // A Builder is used to build sql string for postgres.
 // The zero value is ready to use.
 type Builder struct {
-	sql         strings.Builder
-	params      []any
-	paramsIndex map[any]int
+	sql    []byte
+	params []any
 }
 
-// SQL return the complete sql statement.
-func (b *Builder) SQL() string { return b.sql.String() }
+// The sql statement.
+func (b *Builder) SQL() string { return string(b.sql) }
 
-// Params return positional parameters that coresponding with string returned by SQL method.
+// The positional parameters that coresponding with string returned by [SQL] method.
 func (b *Builder) Params() []any { return b.params }
 
 // P is shorthand for [Param]
@@ -29,48 +27,41 @@ func (b *Builder) P(data any) *Builder { return b.Param(data) }
 
 // Add raw query string to the builder
 func (b *Builder) Raw(sql string) *Builder {
-	if b.sql.Len() != 0 {
-		b.sql.WriteByte(' ')
+	if len(b.sql) != 0 {
+		b.sql = append(b.sql, ' ')
 	}
 
-	b.sql.WriteString(sql)
+	b.sql = append(b.sql, sql...)
 	return b
 }
 
 // Add argument data to the builder
 func (b *Builder) Param(data any) *Builder {
-	if b.sql.Len() != 0 {
-		b.sql.WriteByte(' ')
+	if len(b.sql) != 0 {
+		b.sql = append(b.sql, ' ')
 	}
 
-	pos := len(b.params) + 1
-
+	b.sql = append(b.sql, '$')
 	if reflect.TypeOf(data).Comparable() {
-		if cachedPos, ok := b.paramsIndex[data]; ok {
-			pos = cachedPos
-		} else {
-			if b.paramsIndex == nil {
-				b.paramsIndex = make(map[any]int)
-			}
-			b.paramsIndex[data] = pos
-			b.params = append(b.params, data)
+		bottom := len(b.params) - 32
+		if bottom < 0 {
+			bottom = 0
 		}
-	} else {
-		b.params = append(b.params, data)
+		for i := len(b.params) - 1; i >= bottom; i-- {
+			if data == b.params[i] {
+				b.sql = append(b.sql, strconv.Itoa(i+1)...)
+				return b
+			}
+		}
 	}
-
-	b.sql.WriteByte('$')
-	b.sql.WriteString(strconv.Itoa(pos))
-
+	b.params = append(b.params, data)
+	b.sql = append(b.sql, strconv.Itoa(len(b.params))...)
 	return b
 }
 
 // Reset the builder.
-//
-// will pass the arguments to Add method.
 func (b *Builder) Reset() *Builder {
-	b.sql.Reset()
-	b.params = nil
-	b.paramsIndex = nil
+	b.sql = b.sql[:0]
+	b.params = b.params[:0]
 	return b
 }
